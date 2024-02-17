@@ -3,12 +3,19 @@ from bs4 import BeautifulSoup
 
 class Page:
     '''A class to represent a page on openipf.org or openpowerlifting.org.'''
-    def __init__(self, url=None, username=None):
+    def __init__(self, url=None, username=None, fetch=True):
+        self.fetched = False
         # if url is not provided, create the url from the username
         self.url = url if url else f'https://www.openipf.org/u/{username}' 
         if not self.url_validator():
             raise ValueError('Invalid url')
+        if fetch: 
+            self.fetch()
+
+    def fetch(self):
+        '''Call the request method and set the data attribute.'''
         self.data = self.request()
+        self.fetched = True
 
     def request(self):
         '''Make a request to the url and return the data.'''
@@ -38,6 +45,8 @@ class Page:
         if self.url.startswith(valid):
             return True
         
-    def get_data(self):
+    def get_data(self,refresh_data=False):
         '''Return the data attribute.'''
+        if not self.fetched:
+            self.fetch() # Fetch the data if it hasn't been fetched yet
         return self.data
