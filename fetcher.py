@@ -17,6 +17,18 @@ class Page:
         self.data = self.request()
         self.fetched = True
 
+    @staticmethod
+    def extract_lift_attempts(lifts):
+        attempts = []
+        for lift in lifts:
+            text = lift.text.strip()
+            try:
+                # Convert to integer if possible
+                attempts.append(float(text))
+            except ValueError:
+                pass
+        return attempts
+
     def request(self):
         '''Make a request to the url and return the data.'''
         r = requests.get(self.url)
@@ -33,12 +45,32 @@ class Page:
 
         data = []
         for row in table.find_all('tr')[1:]:
-            # Extract text from each cell in the row
+            # Extract row data for squat, bench, and deadlift attempts
             row_data = [cell.text.strip() for cell in row.find_all(['td', 'th'])]
-            data.append(dict(zip(keys, row_data))) # Create a dictionary from the keys and row_data
+            squat_attempts = Page.extract_lift_attempts(row.find_all('td', class_='squat'))
+            bench_attempts = Page.extract_lift_attempts(row.find_all('td', class_='bench'))
+            deadlift_attempts = Page.extract_lift_attempts(row.find_all('td', class_='deadlift'))
+
+            # Remove all but one of the squat, bench, and deadlift columns
+            for class_name in ['squat', 'bench', 'deadlift']:
+                first = True
+                for td in row.find_all("td", class_=class_name):
+                    if first:
+                        first = False
+                    else:
+                        td.decompose()  # Removes the element from the tree
+
+            # Get row data again just with all but one of the squat, bench, and deadlift columns removed
+            # This is for all the other data in the row
+            row_data = [cell.text.strip() for cell in row.find_all(['td', 'th'])]
+            d = dict(zip(keys, row_data))
+            d['Squat'] = squat_attempts
+            d['Bench'] = bench_attempts
+            d['Deadlift'] = deadlift_attempts
+            data.append(d) # Create a dictionary from the keys and adjusted_row_data
+
         return data
-
-
+    
     def url_validator(self):
         # Check url in format https://www.openipf.org/u/ or https://www.openpowerlifting.org/u/
         valid = ('https://www.openipf.org/u/','https://www.openpowerlifting.org/u/')
